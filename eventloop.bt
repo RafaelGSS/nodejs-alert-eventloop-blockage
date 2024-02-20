@@ -1,0 +1,17 @@
+/* Whenever any thread enters uv__run_timers, record the current time
+   in nanoseconds in a map. */
+u:NODE_PATH:uv__run_timers { @[tid] = nsecs; }
+
+/* Whenever any thread returns from uv__run_check, clear its time from
+   the map. */
+ur:NODE_PATH:uv__run_check /@[tid]/ { delete(@[tid]); }
+
+/* 99 times a second, check if any running thread has been blocked
+   for longer than 10 seconds. If so, take a core dump and stop
+   this script. */
+p:hz:99 /@[tid]/ {
+    if (nsecs - @[tid] > 5000000000) {
+        system("gcore %d", pid);
+        exit();
+    }
+}
